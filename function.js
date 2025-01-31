@@ -1,108 +1,63 @@
-window.function = async function(api_key, endpoint, body, json) {
-  // GET VALUES FROM INPUTS, WITH DEFAULT VALUES WHERE APPLICABLE
-  const apiKey = api_key.value ?? "";
-  const endpointValue = endpoint.value ?? "";
-  const bodyValue = body.value ?? "";
-  const jsonValue = json.value ?? "";
-
-  // INPUT VALIDATION
-  if (!apiKey) {
-    return "Error: API Key is required.";
-  }
-  if (!endpointValue) {
-    return "Error: API Endpoint is required.";
-  }
-  if (!bodyValue) {
-    return "Error: The Body (JSON) is required.";
-  }
-
-  // INITIALIZE VARIABLE FOR BODY JSON MESSAGE
-  let bodyMessage = "";
-
-  if (bodyValue) {
-    // TRY TO PARSE THE JSON TO SEE IF IT'S VALID
-    try {
-      const parsedBodyJson = JSON.parse(bodyValue);
-
-      // CHECK IF Body JSON IS EMPTY
-      if (Object.keys(parsedBodyJson).length === 0) {
-        return "Error: Invalid Body JSON Schema - Schema is empty.";
-      }
-    } catch (e) {
-      return "Error: Invalid Body JSON Schema";
+window.function = async function(api_key, audio_file, model, language, prompt, response_format, temperature, timestamp_granularities) {
+    // Validate API Key
+    if (!api_key.value) {
+        return "Error: OpenAI API Key is required.";
     }
 
-    // CREATE THE JSON MESSAGE
-    bodyMessage = `You must format your input as a JSON value. Your input will be parsed and type-checked according to the provided schema, so make sure all fields in your input match the schema exactly and there are no trailing commas! Do not, under any circumstances, include markdown or a markdown code-block in your response. Your response should be raw JSON only, with nothing else added.\n\nHere is the JSON Schema your input must adhere to:\n\n${bodyValue}`;
-  }
-
-  // INITIALIZE VARIABLE FOR JSON MESSAGE
-  let jsonMessage = "";
-
-  if (jsonValue) {
-    // TRY TO PARSE THE JSON TO SEE IF IT'S VALID
-    try {
-      const parsedJson = JSON.parse(jsonValue);
-
-      // CHECK IF JSON IS EMPTY
-      if (Object.keys(parsedJson).length === 0) {
-        return "Error: Invalid JSON Schema - Schema is empty.";
-      }
-    } catch (e) {
-      return "Error: Invalid JSON Schema";
+    // Validate Required Parameters
+    if (!audio_file.value) {
+        return "Error: Audio file is required.";
+    }
+    if (!model.value) {
+        return "Error: Model is required.";
     }
 
-    // CREATE THE JSON MESSAGE
-    jsonMessage = `You must format your output as a JSON value. Your output will be parsed and type-checked according to the provided schema, so make sure all fields in your output match the schema exactly and there are no trailing commas! Do not, under any circumstances, include markdown or a markdown code-block in your response. Your response should be raw JSON only, with nothing else added.\n\nHere is the JSON Schema your output must adhere to:\n\n${jsonValue}`;
-  }
+    // Construct request payload
+    const formData = new FormData();
+    formData.append("file", audio_file.value);
+    formData.append("model", model.value);
 
-  //let payload = bodyValue;
-
-  // PERFORM POST REQUEST TO OPENAI
-  try {
-    const response = await fetch(endpointValue, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'OpenAI-Beta': 'assistants=v2'
-      },
-      body: bodyValue //JSON.stringify(payload)
-    });
-
-    // IF THERE'S AN ERROR, RETURN THE ERROR MESSAGE
-    if (!response.ok) {
-      let errorMessage = `Error ${response.status} ${response.statusText}`;
-      try {
-        const errorData = await response.json();
-        if (errorData.error && errorData.error.message) {
-          errorMessage += `: ${errorData.error.message}`;
+    // Add optional parameters if provided
+    if (language.value) formData.append("language", language.value);
+    if (prompt.value) formData.append("prompt", prompt.value);
+    if (response_format.value) formData.append("response_format", response_format.value);
+    if (temperature.value) formData.append("temperature", temperature.value);
+    if (timestamp_granularities.value) {
+        try {
+            const parsedTimestamps = JSON.parse(timestamp_granularities.value);
+            if (Array.isArray(parsedTimestamps)) {
+                parsedTimestamps.forEach(granularity => formData.append("timestamp_granularities[]", granularity));
+            } else {
+                return "Error: timestamp_granularities must be a JSON array.";
+            }
+        } catch (e) {
+            return "Error: Invalid JSON format for timestamp_granularities.";
         }
-      } catch (e) {
-        errorMessage += ": Unable to parse error details.";
-      }
-      return errorMessage;
     }
 
-    // ELSE, PARSE THE RESPONSE
-    let data;
+    // API endpoint URL
+    const apiUrl = "https://api.openai.com/v1/audio/transcriptions";
+
+    // Make API request
     try {
-      data = await response.json();
-    } catch (e) {
-      return "Error: Failed to parse API response.";
-    }
+        const response = await fetch(apiUrl, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${api_key.value}`
+            },
+            body: formData
+        });
 
-    // SAFELY ACCESS ASSISTANT'S MESSAGE
-    if (data.id && data.id.length > 0) {
-      const assistantMessage = data.id;
-      // RETURN THE ASSISTANT MESSAGE
-      return assistantMessage;
-    } else {
-      return "Error: Received an invalid response from the API.";
-    }
+        if (!response.ok) {
+            const errorData = await response.json();
+            return `Error ${response.status}: ${errorData.error?.message || "Unknown error"}`;
+        }
 
-  } catch (error) {
-    // CATCH ANY ERRORS THAT OCCUR WHILE FETCHING THE RESPONSE
-    return `Error: Request failed - ${error.message}`;
-  }
+        // Return transcribed text
+        const responseData = await response.json();
+        return responseData.text;
+
+    } catch (error) {
+        return `Error: Request failed - ${error.message}`;
+    }
 };
