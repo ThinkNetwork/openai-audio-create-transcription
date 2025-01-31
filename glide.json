@@ -1,9 +1,8 @@
-
 [
   {
     "kind": "column",
-    "name": "OpenAI (Assistants)",
-    "description": "Create, modify and run OpenAI Assistants.",
+    "name": "Transcribe OpenAI Audio",
+    "description": "Transcribe an audio file using OpenAI's Whisper API, with optional language, response format, timestamp granularity, and temperature settings.",
     "author": "Gavin Horne <gavin@thinknetwork.com.au>",
     "params": [
       {
@@ -12,18 +11,38 @@
         "type": "string"
       },
       {
-        "name": "endpoint",
-        "displayName": "API Endpoint (Required)",
+        "name": "audio_file",
+        "displayName": "Audio File (Required, Multipart)",
+        "type": "file"
+      },
+      {
+        "name": "model",
+        "displayName": "Model (Required)",
         "type": "string"
       },
       {
-        "name": "body",
-        "displayName": "Body (JSON Schema Required)",
+        "name": "language",
+        "displayName": "Language (Optional, e.g., en)",
         "type": "string"
       },
       {
-        "name": "json",
-        "displayName": "JSON Schema (Output)",
+        "name": "prompt",
+        "displayName": "Prompt (Optional, Text Prompt for Model)",
+        "type": "string"
+      },
+      {
+        "name": "response_format",
+        "displayName": "Response Format (Optional, text/json/srt/vtt/verbose_json)",
+        "type": "string"
+      },
+      {
+        "name": "temperature",
+        "displayName": "Temperature (Optional, 0-1.0, Controls Randomness)",
+        "type": "number"
+      },
+      {
+        "name": "timestamp_granularities",
+        "displayName": "Timestamp Granularities (Optional, JSON Array [\"word\", \"segment\"])",
         "type": "string"
       }
     ],
